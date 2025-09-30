@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Random Color Generator — Mhide</title>
+  <style>
+    :root{
+      --bg: #0f1724;
+      --card-radius: 14px;
+      --muted: #9aa4b2;
+      --accent: #7c5cff;
+      --gap: 16px;
+      --glass: rgba(255,255,255,0.06);
+    }
+    html,body{height:100%;margin:0;background:var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial;}
+    .app{
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:40px 20px;
+      box-sizing:border-box;
+    }
+
+    .container{
+      width:100%;
+      max-width:980px;
+      background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));
+      border-radius:18px;
+      padding:20px;
+      box-shadow:0 8px 30px rgba(2,6,23,0.6);
+      display:grid;
+      gap:var(--gap);
+      grid-template-columns: 1fr 320px;
+    }
+
+    /* color preview */
+    .preview{
+      border-radius:12px;
+      overflow:hidden;
+      position:relative;
+      height:420px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      transition:background 900ms ease;
+    }
+    .preview-inner{
+      width:100%;
+      height:100%;
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:12px;
+      padding:28px;
+      box-sizing:border-box;
+    }
+    .swatch-big{
+      font-size:32px;
+      font-weight:700;
+      letter-spacing:0.6px;
+      text-shadow:0 2px 10px rgba(0,0,0,0.18);
+      background:rgba(255,255,255,0.04);
+      padding:18px 32px;
+      border-radius:10px;
+      backdrop-filter: blur(6px) saturate(120%);
+    }
+    .muted{
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    /* controls column */
+    .controls{
+      padding:18px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      height:420px;
+      box-sizing:border-box;
+    }
+    .row{display:flex;gap:10px;align-items:center;}
+    .btn{
+      appearance:none;
+      border:0;
+      background:var(--glass);
+      color:white;
+      padding:10px 14px;
+      border-radius:10px;
+      cursor:pointer;
+      font-weight:600;
+      transition:transform .12s ease, background .15s ease;
+    }
+    .btn:active{transform:scale(.98)}
+    .big-btn{
+      flex:1;
+      background:linear-gradient(90deg,var(--accent),#4ee7b5);
+      color:#002;
+      font-size:16px;
+      padding:12px 18px;
+    }
+    .icon-btn{
+      width:44px;height:44px;display:inline-grid;place-items:center;border-radius:10px;padding:0;
+    }
+
+    .info{
+      display:flex;flex-direction:column;gap:8px;padding:12px;background:rgba(255,255,255,0.02);border-radius:10px;
+      color:var(--muted);
+    }
+
+    .color-line{display:flex;gap:8px;align-items:center;}
+    .color-box{width:28px;height:28px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);box-shadow:inset 0 -3px 6px rgba(0,0,0,0.12);}
+    .muted-small{font-size:13px;color:var(--muted)}
+
+    .history{
+      display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;
+      align-items:center;
+    }
+    .thumb{
+      width:48px;height:36px;border-radius:6px;border:1px solid rgba(255,255,255,0.06);cursor:pointer;box-shadow:0 6px 18px rgba(2,6,23,0.5);
+      transition:transform .12s ease;
+    }
+    .thumb:active{transform:scale(.98)}
+
+    .locks{display:flex;gap:8px;align-items:center}
+
+    /* responsive */
+    @media (max-width:880px){
+      .container{grid-template-columns:1fr; padding:16px;}
+      .controls{height:auto;}
+      .preview{height:360px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="container" role="application" aria-label="Random Color Generator">
+      <div class="preview" id="preview" aria-live="polite">
+        <div class="preview-inner">
+          <div class="swatch-big" id="swatchText">#A1B2C3</div>
+          <div class="muted" id="mutedText">RGB(161,178,195) • HSL(210,24%,70%)</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="row">
+          <button class="btn big-btn" id="generateBtn" title="Generate (Space)">
+            Generate Random Color
+          </button>
+          <button class="btn icon-btn" id="copyBtn" title="Copy HEX">📋</button>
+        </div>
+
+        <div class="row locks">
+          <button class="btn" id="lockBtn" aria-pressed="false">🔒 Lock</button>
+          <button class="btn" id="gradientToggle">🌈 Gradient</button>
+          <button class="btn" id="savePalette">💾 Save Palette</button>
+        </div>
+
+        <div class="info" id="infoPanel" aria-hidden="false">
+          <div class="color-line">
+            <div class="color-box" id="miniBox" aria-hidden="true"></div>
+            <div>
+              <div class="muted-small">HEX</div>
+              <div id="hexValue">#A1B2C3</div>
+            </div>
+          </div>
+          <div class="color-line">
+            <div class="color-box" id="miniBox2" aria-hidden="true"></div>
+            <div>
+              <div class="muted-small">RGB</div>
+              <div id="rgbValue">rgb(161,178,195)</div>
+            </div>
+          </div>
+          <div class="color-line">
+            <div class="color-box" id="miniBox3" aria-hidden="true"></div>
+            <div>
+              <div class="muted-small">HSL</div>
+              <div id="hslValue">hsl(210,24%,70%)</div>
+            </div>
+          </div>
+
+          <div style="margin-top:8px">
+            <div class="muted-small">History</div>
+            <div class="history" id="historyRow" aria-live="polite"></div>
+          </div>
+        </div>
+
+        <div style="margin-top:auto; display:flex; gap:8px; align-items:center;">
+          <div class="muted-small">Tip: Press <strong>Space</strong> to generate.</div>
+          <div style="flex:1"></div>
+          <button class="btn" id="clearHistory">Clear</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ====== Helpers ======
+    const el = (id) => document.getElementById(id);
+    const preview = el("preview");
+    const swatchText = el("swatchText");
+    const mutedText = el("mutedText");
+    const generateBtn = el("generateBtn");
+    const copyBtn = el("copyBtn");
+    const lockBtn = el("lockBtn");
+    const gradientToggle = el("gradientToggle");
+    const historyRow = el("historyRow");
+    const clearHistory = el("clearHistory");
+    const savePaletteBtn = el("savePalette");
+    const miniBox = el("miniBox");
+    const miniBox2 = el("miniBox2");
+    const miniBox3 = el("miniBox3");
+    const hexValue = el("hexValue");
+    const rgbValue = el("rgbValue");
+    const hslValue = el("hslValue");
+
+    // state
+    let locked = false;
+    let gradientMode = false;
+    let history = JSON.parse(localStorage.getItem("color_history") || "[]");
+
+    // init
+    function init(){
+      // load history thumbnails
+      renderHistory();
+      // generate initial color
+      applyColor(randomColor());
+    }
+
+    // random color (returns {r,g,b,hex})
+    function randomColor(){
+      const r = Math.floor(Math.random()*256);
+      const g = Math.floor(Math.random()*256);
+      const b = Math.floor(Math.random()*256);
+      return {r,g,b,hex: rgbToHex(r,g,b)};
+    }
+
+    function rgbToHex(r,g,b){
+      const h = (n) => n.toString(16).padStart(2,"0");
+      return `#${h(r)}${h(g)}${h(b)}`.toUpperCase();
+    }
+
+    function hexToRgb(hex){
+      const c = hex.replace("#","").trim();
+      const r = parseInt(c.substring(0,2),16);
+      const g = parseInt(c.substring(2,4),16);
+      const b = parseInt(c.substring(4,6),16);
+      return {r,g,b};
+    }
+
+    function rgbToHsl(r,g,b){
+      r/=255;g/=255;b/=255;
+      const max = Math.max(r,g,b), min = Math.min(r,g,b);
+      let h=0,s=0,l=(max+min)/2;
+      if(max!==min){
+        const d = max-min;
+        s = l > 0.5 ? d/(2-max-min) : d/(max+min);
+        switch(max){
+          case r: h = (g-b)/d + (g < b ? 6:0); break;
+          case g: h = (b-r)/d + 2; break;
+          case b: h = (r-g)/d + 4; break;
+        }
+        h /= 6;
+      }
+      return { h: Math.round(h*360), s: Math.round(s*100), l: Math.round(l*100) };
+    }
+
+    // compute contrast color (black or white) using luminance
+    function contrastColor(r,g,b){
+      // relative luminance
+      const srgb = [r,g,b].map(v => v/255).map(c => c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4));
+      const L = 0.2126*srgb[0] + 0.7152*srgb[1] + 0.0722*srgb[2];
+      return L > 0.5 ? "#111" : "#fff";
+    }
+
+    // render color to UI. Accepts {r,g,b,hex} or hex string
+    function applyColor(color){
+      let c;
+      if(typeof color === "string"){
+        c = hexToRgb(color);
+        c.hex = color.toUpperCase();
+      } else c = color;
+
+      // if locked and not initial force, skip applying
+      if(locked && !arguments[1]) return;
+
+      // gradient mode?
+      if(gradientMode){
+        const other = randomColor();
+        const gCss = `linear-gradient(135deg, ${c.hex}, ${other.hex})`;
+        preview.style.transition = "background 900ms ease";
+        preview.style.background = gCss;
+
+        // update display to show first color hex + second
+        swatchText.textContent = `${c.hex} → ${other.hex}`;
+        const hsl1 = rgbToHsl(c.r,c.g,c.b);
+        const hsl2 = rgbToHsl(other.r,other.g,other.b);
+        mutedText.textContent = `RGB(${c.r},${c.g},${c.b}) • HSL(${hsl1.h},${hsl1.s}%,${hsl1.l}%)  —  second: ${other.hex} • HSL(${hsl2.h},${hsl2.s}%,${hsl2.l}%)`;
+        // set mini boxes
+        miniBox.style.background = c.hex;
+        miniBox2.style.background = other.hex;
+        miniBox3.style.background = `linear-gradient(90deg, ${c.hex}, ${other.hex})`;
+      } else {
+        preview.style.transition = "background 900ms ease";
+        preview.style.background = c.hex;
+        swatchText.textContent = c.hex;
+        const h = rgbToHsl(c.r,c.g,c.b);
+        mutedText.textContent = `RGB(${c.r}, ${c.g}, ${c.b}) • HSL(${h.h}, ${h.s}%, ${h.l}%)`;
+        miniBox.style.background = c.hex;
+        miniBox2.style.background = c.hex;
+        miniBox3.style.background = c.hex;
+        hexValue.textContent = c.hex;
+        rgbValue.textContent = `rgb(${c.r}, ${c.g}, ${c.b})`;
+        hslValue.textContent = `hsl(${h.h}, ${h.s}%, ${h.l}%)`;
+      }
+
+      // set readable text color
+      const textClr = contrastColor(c.r,c.g,c.b);
+      swatchText.style.color = textClr;
+      mutedText.style.color = textClr;
+      // also ensure buttons are readable by changing box-shadow or not — keep simple here
+
+      // push to history
+      pushHistory(c.hex);
+    }
+
+    // history
+    function renderHistory(){
+      historyRow.innerHTML = "";
+      history.forEach(hex => {
+        const t = document.createElement("div");
+        t.className = "thumb";
+        t.style.background = hex;
+        t.title = hex;
+        t.addEventListener("click", () => applyColor(hex));
+        historyRow.appendChild(t);
+      });
+    }
+
+    function pushHistory(hex){
+      // keep unique recent and cap at 12
+      history = history.filter(h => h !== hex);
+      history.unshift(hex);
+      history = history.slice(0,12);
+      localStorage.setItem("color_history", JSON.stringify(history));
+      renderHistory();
+    }
+
+    // generate action
+    generateBtn.addEventListener("click", () => {
+      const color = randomColor();
+      applyColor(color);
+    });
+
+    // spacebar keyboard
+    window.addEventListener("keydown", (e) => {
+      if(e.code === "Space" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA"){
+        e.preventDefault();
+        generateBtn.click();
+      }
+    });
+
+    // copy
+    copyBtn.addEventListener("click", async () => {
+      const hex = swatchText.textContent.split("→")[0].trim();
+      try{
+        await navigator.clipboard.writeText(hex);
+        copyBtn.textContent = "✅";
+        setTimeout(()=> copyBtn.textContent = "📋", 900);
+      }catch(err){
+        copyBtn.textContent = "❌";
+        setTimeout(()=> copyBtn.textContent = "📋", 1200);
+      }
+    });
+
+    // lock
+    lockBtn.addEventListener("click", () => {
+      locked = !locked;
+      lockBtn.style.background = locked ? "rgba(124,92,255,0.18)" : "";
+      lockBtn.setAttribute("aria-pressed", String(locked));
+      lockBtn.textContent = locked ? "🔓 Locked" : "🔒 Lock";
+    });
+
+    // gradient toggle
+    gradientToggle.addEventListener("click", () => {
+      gradientMode = !gradientMode;
+      gradientToggle.style.background = gradientMode ? "rgba(78,231,181,0.12)" : "";
+      gradientToggle.textContent = gradientMode ? "🌈 Gradient ✓" : "🌈 Gradient";
+    });
+
+    // clear history
+    clearHistory.addEventListener("click", () => {
+      history = [];
+      localStorage.removeItem("color_history");
+      renderHistory();
+    });
+
+    // save palette (5 colors from history top)
+    savePaletteBtn.addEventListener("click", () => {
+      const palette = history.slice(0,5);
+      if(palette.length === 0) {
+        alert("No colors in history to save yet.");
+        return;
+      }
+      const saved = JSON.parse(localStorage.getItem("saved_palettes") || "[]");
+      saved.unshift({id:Date.now(), colors:palette});
+      localStorage.setItem("saved_palettes", JSON.stringify(saved));
+      savePaletteBtn.textContent = "Saved ✓";
+      setTimeout(()=> savePaletteBtn.textContent = "💾 Save Palette", 900);
+    });
+
+    // initialize
+    init();
+  </script>
+</body>
+</html>
